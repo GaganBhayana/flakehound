@@ -5,7 +5,7 @@ Status values: `todo`, `review (PR #n)`, `done (PR #n)`, `blocked: <reason>`. Si
 ## M0 Foundation
 
 ### FH-001 Minimal, safe XML parser
-- Status: todo
+- Status: review
 - Size: M
 - Depends on: none
 - Goal: `src/xml/parse.ts`: a small non-validating XML parser for test reports: elements, attributes, text, CDATA, comments, the five predefined entities and numeric character references. Rejects DOCTYPE and external entities (no XXE), caps depth (default 64) and input size.
