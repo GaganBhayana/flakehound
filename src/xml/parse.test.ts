@@ -78,6 +78,19 @@ test('mixed content keeps text order around child elements', () => {
   assert.equal(textContent(root), 'one two three');
 });
 
+test('text of non-breaking spaces is data, not ignorable whitespace', () => {
+  assert.deepEqual(parsed('<a>\u00a0\u00a0</a>').children, [text('\u00a0\u00a0')]);
+  assert.deepEqual(parsed('<a>&#160;</a>').children, [text('\u00a0')]);
+});
+
+test('line endings are normalised in text, CDATA and attribute values', () => {
+  const root = parsed('<a v="x\r\ny\rz"><b>l1\r\nl2\rl3</b><c><![CDATA[s1\r\ns2]]></c></a>');
+  assert.equal(root.attributes['v'], 'x y z');
+  assert.equal(textContent(childElements(root, 'b')[0] as XmlElement), 'l1\nl2\nl3');
+  assert.equal(textContent(childElements(root, 'c')[0] as XmlElement), 's1\ns2');
+  assert.equal(textContent(parsed('<a>x&#13;&#10;y</a>')), 'x\r\ny');
+});
+
 test('a byte order mark is ignored', () => {
   assert.deepEqual(parsed('﻿<a/>'), el('a'));
 });
@@ -163,6 +176,11 @@ const malformed: ReadonlyArray<[string, string, RegExp, number, number]> = [
   ['NUL character reference', '<a>&#0;</a>', /not a valid XML character/, 1, 4],
   ['out-of-range character reference', '<a>&#x110000;</a>', /not a valid XML character/, 1, 4],
   ['unknown entity in an attribute', '<a x="&nbsp;"/>', /unknown entity &nbsp;/, 1, 7],
+  ['unterminated processing instruction', '<a><?pi x</a>', /unterminated processing instruction/, 1, 6],
+  ['closing tag cut off', '<a></a', /expected > to close <\/a/, 1, 7],
+  ['non-breaking space before the root', '\u00a0<a/>', /text outside the root/, 1, 1],
+  ['error line after CRLF line endings', '<a>\r\n<b>\r\n</c>', /<\/c> does not match <b>/, 3, 1],
+  ['error line after lone CR line endings', '<a>\r<b>\r</c>', /<\/c> does not match <b>/, 3, 1],
 ];
 
 for (const [name, input, message, line, column] of malformed) {

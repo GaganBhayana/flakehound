@@ -42,6 +42,9 @@ const NAME = /[\p{L}_:][\p{L}\p{N}_.:·-]*/uy;
 const SPACE = /[ \t\r\n]*/y;
 const PREDEFINED: Readonly<Record<string, string>> = { lt: '<', gt: '>', amp: '&', quot: '"', apos: "'" };
 
+/** True when `s` holds only XML whitespace (space, tab, CR, LF). JS `trim()` would also drop U+00A0 and friends. */
+const isXmlSpace = (s: string): boolean => /^[ \t\r\n]*$/.test(s);
+
 /** Thrown inside the parser only; {@link parseXml} turns it into an `XmlError`. */
 class Fail {
   readonly message: string;
@@ -146,7 +149,7 @@ function readAttributes(input: string, at: number): { attributes: Record<string,
 }
 
 function flushText(open: Open, keepWhitespace: boolean): void {
-  if (open.text !== '' && (open.hasCdata || keepWhitespace || open.text.trim() !== '')) {
+  if (open.text !== '' && (open.hasCdata || keepWhitespace || !isXmlSpace(open.text))) {
     open.children.push({ type: 'text', text: open.text });
   }
   open.text = '';
@@ -171,7 +174,7 @@ function parseDocument(input: string, options: Required<XmlParseOptions>): XmlEl
     if (textEnd > pos) {
       const raw = input.slice(pos, textEnd);
       if (top === undefined) {
-        if (raw.trim() !== '') throw new Fail('text outside the root element', pos + raw.search(/\S/));
+        if (!isXmlSpace(raw)) throw new Fail('text outside the root element', pos + raw.search(/[^ \t\r\n]/));
       } else {
         top.text += decode(raw, pos);
       }
@@ -233,8 +236,10 @@ function parseDocument(input: string, options: Required<XmlParseOptions>): XmlEl
  * Parses an XML document such as a JUnit report into a tree. Non-validating and safe for
  * untrusted input: DOCTYPE (and so every custom or external entity) is rejected, only the
  * five predefined entities and numeric character references are expanded, and nesting
- * depth and input size are capped. Returns the first error with its line and column.
- * Throws a `RangeError` for invalid options.
+ * depth and input size are capped. Line endings are normalised first (`\r\n` and a lone
+ * `\r` become `\n`, as XML 1.0 section 2.11 requires), so text, CDATA and attribute values
+ * never contain a literal carriage return unless it was written as `&#13;`.
+ * Returns the first error with its line and column. Throws a `RangeError` for invalid options.
  */
 export function parseXml(input: string, options: XmlParseOptions = {}): XmlResult {
   const settings = { ...XML_DEFAULTS, ...options };
@@ -247,11 +252,12 @@ export function parseXml(input: string, options: XmlParseOptions = {}): XmlResul
   if (input.length > settings.maxBytes || Buffer.byteLength(input, 'utf8') > settings.maxBytes) {
     return { ok: false, error: { message: `input is larger than ${settings.maxBytes} bytes`, line: 1, column: 1 } };
   }
+  const text = input.replace(/\r\n?/g, '\n');
   try {
-    return { ok: true, value: parseDocument(input, settings) };
+    return { ok: true, value: parseDocument(text, settings) };
   } catch (error) {
     if (!(error instanceof Fail)) throw error;
-    return { ok: false, error: { message: error.message, ...position(input, error.at) } };
+    return { ok: false, error: { message: error.message, ...position(text, error.at) } };
   }
 }
 
