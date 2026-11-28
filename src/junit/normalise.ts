@@ -13,7 +13,10 @@ export interface TestResult {
   /** The `classname` attribute (a class, module or package), when present and not empty. */
   readonly classname?: string;
   readonly name: string;
-  /** Repository-relative path of the test file, when the report gives or implies one. */
+  /**
+   * Repository-relative path of the test file, when the report gives or implies one.
+   * Unset when the path is absolute (and not under `rootDir`) or has a `..` segment.
+   */
   readonly file?: string;
   readonly status: TestStatus;
   /** Wall time in whole milliseconds; 0 when missing or invalid. */
@@ -25,8 +28,10 @@ export interface TestResult {
   /** The case's `system-out` and `system-err`, joined. */
   readonly output?: string;
   /**
-   * Failed attempts that Surefire reran (`flakyFailure`, `flakyError`, `rerunFailure`,
-   * `rerunError`). A `passed` result with reruns failed and then passed in the same job.
+   * Failed attempts that Surefire recorded besides the final outcome (`flakyFailure`,
+   * `flakyError`, `rerunFailure`, `rerunError`). On a `passed` result these are the failed
+   * attempts before it passed in the same job; on a `failed` or `error` result they are the
+   * reruns that failed too.
    */
   readonly rerunFailures?: number;
 }
@@ -37,6 +42,19 @@ export interface JunitError {
   readonly line?: number;
   readonly column?: number;
 }
+
+/** Options for {@link normaliseJunitTree}. */
+export interface JunitOptions {
+  /**
+   * Absolute path of the checkout (for example `GITHUB_WORKSPACE`). Absolute file paths
+   * under it become repository-relative, so ids match across runners. Compared
+   * case-insensitively when it starts with a drive letter.
+   */
+  readonly rootDir?: string;
+}
+
+/** Options for {@link normaliseJunit}: XML limits plus {@link JunitOptions}. */
+export interface NormaliseOptions extends XmlParseOptions, JunitOptions {}
 
 /** Outcome of {@link normaliseJunit}. */
 export type JunitResult = { readonly ok: true; readonly results: readonly TestResult[] } | { readonly ok: false; readonly error: JunitError };
@@ -51,20 +69,28 @@ const RERUN_ELEMENTS = new Set(['flakyFailure', 'flakyError', 'rerunFailure', 'r
 const TEST_FILE = /\.(?:[cm]?[jt]sx?|py|rb|go|java|kt|cs|php|rs|exs?)$/;
 
 /**
- * Parses a JUnit XML report and returns one {@link TestResult} per `<testcase>`, in document
- * order. Accepts a `<testsuites>` or a bare `<testsuite>` root and nested suites, as written
+ * Parses a JUnit XML report and returns one {@link TestResult} per `<testcase>`. Each suite's
+ * own cases come first, in document order, followed by the cases of its nested suites, suite
+ * by suite. Accepts a `<testsuites>` or a bare `<testsuite>` root and nested suites, as written
  * by jest-junit, Vitest, pytest, gotestsum, Maven Surefire and rspec_junit_formatter.
  * A case with `<failure>` is `failed`, else with `<error>` is `error`, else with `<skipped>`
  * is `skipped`, else `passed`. Repeated cases (retries) are kept and share an id.
+ * Throws a `RangeError` when `rootDir` is not an absolute path.
  */
-export function normaliseJunit(xml: string, options: XmlParseOptions = {}): JunitResult {
-  const parsed = parseXml(xml, options);
+export function normaliseJunit(xml: string, options: NormaliseOptions = {}): JunitResult {
+  const { rootDir, ...xmlOptions } = options;
+  const root = checkRootDir(rootDir);
+  const parsed = parseXml(xml, xmlOptions);
   if (!parsed.ok) return { ok: false, error: parsed.error };
-  return normaliseJunitTree(parsed.value);
+  return walk(parsed.value, root);
 }
 
 /** Like {@link normaliseJunit} for an already parsed document. */
-export function normaliseJunitTree(root: XmlElement): JunitResult {
+export function normaliseJunitTree(root: XmlElement, options: JunitOptions = {}): JunitResult {
+  return walk(root, checkRootDir(options.rootDir));
+}
+
+function walk(root: XmlElement, rootDir: string | undefined): JunitResult {
   if (root.name !== 'testsuites' && root.name !== 'testsuite') {
     return { ok: false, error: { message: `not a JUnit report: root element is <${root.name}>, expected <testsuites> or <testsuite>` } };
   }
@@ -75,11 +101,11 @@ export function normaliseJunitTree(root: XmlElement): JunitResult {
     const isSuite = element.name === 'testsuite';
     const name = isSuite ? element.attributes['name']?.trim() : undefined;
     const path = name ? [...suites, name] : suites;
-    const suiteFile = (isSuite ? cleanPath(element.attributes['file']) : undefined) ?? file;
+    const suiteFile = (isSuite ? repoPath(element.attributes['file'], rootDir) : undefined) ?? file;
     const children = element.children.filter((c): c is XmlElement => c.type === 'element');
     const nested: typeof pending = [];
     for (const child of children) {
-      if (child.name === 'testcase') results.push(toResult(child, path, suiteFile));
+      if (child.name === 'testcase') results.push(toResult(child, path, suiteFile, rootDir));
       else if (child.name === 'testsuite') nested.push({ element: child, suites: path, file: suiteFile });
     }
     // Keep document order: cases of this suite first, then nested suites in order.
@@ -88,12 +114,12 @@ export function normaliseJunitTree(root: XmlElement): JunitResult {
   return { ok: true, results };
 }
 
-function toResult(testcase: XmlElement, suites: readonly string[], suiteFile: string | undefined): TestResult {
+function toResult(testcase: XmlElement, suites: readonly string[], suiteFile: string | undefined, rootDir: string | undefined): TestResult {
   const suite = suites.join(' / ');
   const attrs = testcase.attributes;
   const name = (attrs['name'] ?? '').trim();
   const classname = attrs['classname']?.trim() || undefined;
-  const file = cleanPath(attrs['file']) ?? suiteFile ?? inferFile(classname) ?? inferFile(suites.at(-1));
+  const file = repoPath(attrs['file'], rootDir) ?? suiteFile ?? inferFile(classname, rootDir) ?? inferFile(suites.at(-1), rootDir);
   const outcome = findOutcome(testcase);
   const output = [...childElements(testcase, 'system-out'), ...childElements(testcase, 'system-err')]
     .map((e) => trimXmlSpace(textContent(e)))
@@ -149,16 +175,48 @@ export function parseDuration(time: string | undefined): number {
   return Number.isSafeInteger(ms) ? ms : 0;
 }
 
-/** Normalises a file attribute: forward slashes, no leading `./`. Empty becomes undefined. */
-function cleanPath(path: string | undefined): string | undefined {
-  const value = path?.trim().replaceAll('\\', '/').replace(/^(?:\.\/)+/, '');
-  return value ? value : undefined;
+/** A path starting with `/` (POSIX or UNC) or a drive letter (`C:`), after `\\` became `/`. */
+const ABSOLUTE = /^(?:\/|[A-Za-z]:)/;
+const DRIVE = /^[A-Za-z]:/;
+
+/** Validates `rootDir` and returns it with forward slashes and no trailing slash. */
+function checkRootDir(rootDir: string | undefined): string | undefined {
+  if (rootDir === undefined) return undefined;
+  const value = slashes(rootDir.trim()).replace(/\/+$/, '');
+  if (!ABSOLUTE.test(value) || value === '' || /^[A-Za-z]:$/.test(value)) {
+    throw new RangeError(`rootDir must be an absolute path below the filesystem root, got ${JSON.stringify(rootDir.slice(0, 200))}`);
+  }
+  return value;
+}
+
+/**
+ * Turns a file attribute into a repository-relative path: forward slashes, no `.` or empty
+ * segments, `rootDir` removed from absolute paths. Returns undefined when the path is empty,
+ * still absolute, or has a `..` segment.
+ */
+function repoPath(path: string | undefined, rootDir: string | undefined): string | undefined {
+  if (path === undefined) return undefined;
+  let value = slashes(path.trim());
+  if (rootDir !== undefined && ABSOLUTE.test(value)) {
+    const caseless = DRIVE.test(rootDir);
+    const head = value.slice(0, rootDir.length + 1);
+    const prefix = rootDir + '/';
+    if (caseless ? head.toLowerCase() === prefix.toLowerCase() : head === prefix) value = value.slice(prefix.length);
+  }
+  if (ABSOLUTE.test(value)) return undefined;
+  const segments = value.split('/').filter((segment) => segment !== '' && segment !== '.');
+  if (segments.length === 0 || segments.includes('..')) return undefined;
+  return segments.join('/');
+}
+
+function slashes(path: string): string {
+  return path.replaceAll('\\', '/');
 }
 
 /** Treats a classname or suite name as a file path when it ends in a source extension. */
-function inferFile(value: string | undefined): string | undefined {
+function inferFile(value: string | undefined, rootDir: string | undefined): string | undefined {
   if (value === undefined || /\s/.test(value) || !TEST_FILE.test(value)) return undefined;
-  return cleanPath(value);
+  return repoPath(value, rootDir);
 }
 
 function firstLine(text: string): string {

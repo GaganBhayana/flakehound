@@ -63,6 +63,17 @@ test('a repeated case (a retry) keeps both entries with one id', () => {
   assert.deepEqual([a.status, b.status], ['failed', 'passed']);
 });
 
+test('Surefire reruns are counted whatever the final outcome', () => {
+  const failed = one(
+    '<testsuite><testcase name="t"><failure message="boom">a</failure><rerunFailure message="boom">b</rerunFailure><rerunFailure message="boom">c</rerunFailure></testcase></testsuite>',
+  );
+  assert.deepEqual([failed.status, failed.rerunFailures, failed.message, failed.stack], ['failed', 2, 'boom', 'a']);
+  const errored = one('<testsuite><testcase name="t"><error message="down"/><rerunError message="down"/></testcase></testsuite>');
+  assert.deepEqual([errored.status, errored.rerunFailures], ['error', 1]);
+  const flaky = one('<testsuite><testcase name="t"><flakyError message="x"/><flakyFailure message="y"/></testcase></testsuite>');
+  assert.deepEqual([flaky.status, flaky.rerunFailures, 'message' in flaky], ['passed', 2, false]);
+});
+
 test('failure wins over error, error over skipped', () => {
   assert.equal(one('<testsuite><testcase name="t"><skipped/><error/><failure/></testcase></testsuite>').status, 'failed');
   assert.equal(one('<testsuite><testcase name="t"><skipped/><error/></testcase></testsuite>').status, 'error');
@@ -102,6 +113,48 @@ test('file comes from the case, then the suite, then a path-like classname or su
     assert.equal(one(`<testsuite><testcase name="t" classname="${classname}"/></testsuite>`).file, undefined, classname);
   }
   assert.equal(one('<testsuite><testcase name="t" file="  "/></testsuite>').file, undefined);
+  assert.equal(one('<testsuite><testcase name="t" file="a//./b/c.py"/></testsuite>').file, 'a/b/c.py');
+});
+
+test('absolute paths and ".." segments never become a file', () => {
+  const unsafe = ['/home/runner/work/w/w/src/a.test.js', 'D:\\a\\w\\w\\src\\a.test.js', 'c:/x/a.py', '\\\\host\\share\\a.py', '../../etc/passwd', 'src/../../a.py', 'src/..'];
+  for (const file of unsafe) {
+    assert.equal(one(`<testsuite><testcase name="t" file="${file}"/></testsuite>`).file, undefined, file);
+  }
+  // An unsafe case path falls back to the suite's file, and an unsafe classname is not inferred.
+  assert.equal(one('<testsuite file="src/a.py"><testcase name="t" file="/abs/a.py"/></testsuite>').file, 'src/a.py');
+  assert.equal(one('<testsuite><testcase name="t" classname="../x/a_test.go"/></testsuite>').file, undefined);
+});
+
+test('rootDir makes absolute paths relative, so ids match across runners', () => {
+  const xml = (file: string) => `<testsuite name="math"><testcase name="adds" file="${file}"/></testsuite>`;
+  const linux = normaliseJunit(xml('/home/runner/work/w/w/src/a.test.js'), { rootDir: '/home/runner/work/w/w/' });
+  const windows = normaliseJunit(xml('D:\\a\\w\\w\\src\\a.test.js'), { rootDir: 'd:\\A\\w\\w' });
+  const relative = normaliseJunit(xml('./src/a.test.js'), { rootDir: '/elsewhere' });
+  assert.ok(linux.ok && windows.ok && relative.ok);
+  assert.equal(linux.results[0]?.file, 'src/a.test.js');
+  assert.equal(windows.results[0]?.file, 'src/a.test.js');
+  assert.equal(linux.results[0]?.id, windows.results[0]?.id);
+  assert.equal(linux.results[0]?.id, relative.results[0]?.id);
+  // POSIX roots are case-sensitive, a path outside the root stays unset, and the root itself is not a file.
+  const outside = (file: string, rootDir: string) => normaliseJunit(xml(file), { rootDir });
+  for (const [file, rootDir] of [['/Home/w/a.js', '/home/w'], ['/home/wx/a.js', '/home/w'], ['/home/w', '/home/w'], ['/home/w/../a.js', '/home/w']]) {
+    const r = outside(file ?? '', rootDir ?? '');
+    assert.ok(r.ok);
+    assert.equal(r.results[0]?.file, undefined, `${file} under ${rootDir}`);
+  }
+  // Suite files and path-like suite names use rootDir too.
+  const tree = parseXml('<testsuites><testsuite name="/r/src/b.spec.ts"><testcase name="t"/></testsuite></testsuites>');
+  assert.ok(tree.ok);
+  const named = normaliseJunitTree(tree.value, { rootDir: '/r' });
+  assert.ok(named.ok);
+  assert.equal(named.results[0]?.file, 'src/b.spec.ts');
+});
+
+test('rootDir must be an absolute path', () => {
+  for (const rootDir of ['src', './x', '', '/', 'C:', 'C:\\']) {
+    assert.throws(() => normaliseJunit('<testsuites/>', { rootDir }), RangeError, rootDir);
+  }
 });
 
 test('empty classname and missing name are tolerated', () => {
