@@ -1,0 +1,15 @@
+[
+  { "suite": "src/math.test.ts", "classname": "src/math.test.ts", "name": "math > adds numbers", "file": "src/math.test.ts", "status": "passed", "durationMs": 1 },
+  {
+    "suite": "src/math.test.ts",
+    "classname": "src/math.test.ts",
+    "name": "math > divides",
+    "file": "src/math.test.ts",
+    "status": "failed",
+    "durationMs": 4,
+    "message": "expected 0.5 to be 2 // Object.is equality",
+    "stack": "AssertionError: expected 0.5 to be 2 // Object.is equality\n ❯ src/math.test.ts:9:22",
+    "output": "divide called with 1 2"
+  },
+  { "suite": "src/math.test.ts", "classname": "src/math.test.ts", "name": "math > todo rounding", "file": "src/math.test.ts", "status": "skipped", "durationMs": 0 }
+]

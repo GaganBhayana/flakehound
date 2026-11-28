@@ -12,7 +12,7 @@ Status values: `todo`, `review (PR #n)`, `done (PR #n)`, `blocked: <reason>`. Si
 - Acceptance: tests for each construct, malformed input errors with line numbers, DOCTYPE rejection, depth limit.
 
 ### FH-002 JUnit XML to normalised results
-- Status: todo
+- Status: done (PR #2)
 - Size: M
 - Depends on: FH-001
 - Goal: `src/junit/normalise.ts` maps `<testsuites>/<testsuite>/<testcase>` with `<failure>`, `<error>`, `<skipped>`, `system-out` into `TestResult {id, suite, name, file?, status: passed|failed|error|skipped, durationMs, message?, stack?}`. Stable `id` from suite + name + file.

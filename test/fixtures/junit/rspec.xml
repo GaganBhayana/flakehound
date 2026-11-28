@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="rspec" tests="3" skipped="1" failures="1" errors="0" time="0.031952" timestamp="2026-11-28T09:40:03+05:30" hostname="runner-7">
+<properties>
+<property name="seed" value="48213"/>
+</properties>
+<testcase classname="spec.models.widget_spec" name="Widget is valid with a name" file="./spec/models/widget_spec.rb" time="0.001402"></testcase>
+<testcase classname="spec.models.widget_spec" name="Widget rejects a blank name" file="./spec/models/widget_spec.rb" time="0.010577"><failure message="expected `#&lt;Widget id: nil, name: &quot;&quot;&gt;.valid?` to be falsey, got true" type="RSpec::Expectations::ExpectationNotMetError">Failure/Error: expect(widget).not_to be_valid
+  expected `#&lt;Widget id: nil, name: &quot;&quot;&gt;.valid?` to be falsey, got true
+./spec/models/widget_spec.rb:12:in `block (2 levels) in &lt;top (required)&gt;&apos;</failure></testcase>
+<testcase classname="spec.models.widget_spec" name="Widget exports to CSV" file="./spec/models/widget_spec.rb" time="0.000031"><skipped/></testcase>
+</testsuite>

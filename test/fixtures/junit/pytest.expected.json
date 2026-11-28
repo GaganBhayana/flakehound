@@ -1,0 +1,30 @@
+[
+  { "suite": "pytest", "classname": "tests.test_math", "name": "test_add", "status": "passed", "durationMs": 1 },
+  {
+    "suite": "pytest",
+    "classname": "tests.test_math.TestDivide",
+    "name": "test_by_zero",
+    "status": "failed",
+    "durationMs": 3,
+    "message": "ZeroDivisionError: division by zero",
+    "stack": "self = <tests.test_math.TestDivide object at 0x7f3a2c1d5e50>\n\n    def test_by_zero(self):\n>       assert divide(1, 0) == 0\nE       ZeroDivisionError: division by zero\n\ntests/test_math.py:14: ZeroDivisionError"
+  },
+  {
+    "suite": "pytest",
+    "classname": "tests.test_math",
+    "name": "test_param[1-2]",
+    "status": "error",
+    "durationMs": 0,
+    "message": "failed on setup with \"fixture 'db' not found\"",
+    "stack": "file /home/runner/work/widgets/widgets/tests/test_math.py, line 20\n  def test_param(db, a, b):\nE       fixture 'db' not found"
+  },
+  {
+    "suite": "pytest",
+    "classname": "tests.test_math",
+    "name": "test_windows_only",
+    "status": "skipped",
+    "durationMs": 0,
+    "message": "requires Windows",
+    "stack": "tests/test_math.py:25: requires Windows"
+  }
+]

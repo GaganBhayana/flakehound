@@ -1,0 +1,24 @@
+[
+  { "suite": "com.acme.widgets.MathTest", "classname": "com.acme.widgets.MathTest", "name": "adds", "status": "passed", "durationMs": 12 },
+  {
+    "suite": "com.acme.widgets.MathTest",
+    "classname": "com.acme.widgets.MathTest",
+    "name": "divides",
+    "status": "failed",
+    "durationMs": 34,
+    "message": "expected: <2> but was: <1>",
+    "stack": "org.opentest4j.AssertionFailedError: expected: <2> but was: <1>\n\tat com.acme.widgets.MathTest.divides(MathTest.java:21)",
+    "output": "dividing 2 by 1\nWARN slow divider"
+  },
+  {
+    "suite": "com.acme.widgets.MathTest",
+    "classname": "com.acme.widgets.MathTest",
+    "name": "connects",
+    "status": "error",
+    "durationMs": 2500,
+    "message": "Connection refused",
+    "stack": "java.net.ConnectException: Connection refused\n\tat com.acme.widgets.MathTest.connects(MathTest.java:30)"
+  },
+  { "suite": "com.acme.widgets.MathTest", "classname": "com.acme.widgets.MathTest", "name": "retriesThenPasses", "status": "passed", "durationMs": 200, "rerunFailures": 1 },
+  { "suite": "com.acme.widgets.MathTest", "classname": "com.acme.widgets.MathTest", "name": "disabled", "status": "skipped", "durationMs": 0, "message": "flaky on CI" }
+]

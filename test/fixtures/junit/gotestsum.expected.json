@@ -1,0 +1,20 @@
+[
+  { "suite": "github.com/acme/widgets/math", "classname": "github.com/acme/widgets/math", "name": "TestAdd", "status": "passed", "durationMs": 0 },
+  {
+    "suite": "github.com/acme/widgets/math",
+    "classname": "github.com/acme/widgets/math",
+    "name": "TestDivide/by_zero",
+    "status": "failed",
+    "durationMs": 10,
+    "message": "Failed",
+    "stack": "=== RUN   TestDivide/by_zero\n    math_test.go:14: expected an error, got nil\n--- FAIL: TestDivide/by_zero (0.01s)"
+  },
+  {
+    "suite": "github.com/acme/widgets/math",
+    "classname": "github.com/acme/widgets/math",
+    "name": "TestSlow",
+    "status": "skipped",
+    "durationMs": 0,
+    "message": "=== RUN   TestSlow\n    math_test.go:22: slow test, use -long\n--- SKIP: TestSlow (0.00s)"
+  }
+]

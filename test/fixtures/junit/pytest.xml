@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?><testsuites><testsuite name="pytest" errors="1" failures="1" skipped="1" tests="4" time="0.215" timestamp="2026-11-28T09:40:01.512345+05:30" hostname="runner-7"><testcase classname="tests.test_math" name="test_add" time="0.001" /><testcase classname="tests.test_math.TestDivide" name="test_by_zero" time="0.003"><failure message="ZeroDivisionError: division by zero">self = &lt;tests.test_math.TestDivide object at 0x7f3a2c1d5e50&gt;
+
+    def test_by_zero(self):
+&gt;       assert divide(1, 0) == 0
+E       ZeroDivisionError: division by zero
+
+tests/test_math.py:14: ZeroDivisionError</failure></testcase><testcase classname="tests.test_math" name="test_param[1-2]" time="0.000"><error message="failed on setup with &quot;fixture 'db' not found&quot;">file /home/runner/work/widgets/widgets/tests/test_math.py, line 20
+  def test_param(db, a, b):
+E       fixture 'db' not found</error></testcase><testcase classname="tests.test_math" name="test_windows_only" time="0.000"><skipped type="pytest.skip" message="requires Windows">tests/test_math.py:25: requires Windows</skipped></testcase></testsuite></testsuites>

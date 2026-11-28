@@ -1,0 +1,14 @@
+[
+  { "suite": "math", "classname": "math adds numbers", "name": "math adds numbers", "file": "src/math.test.js", "status": "passed", "durationMs": 3 },
+  {
+    "suite": "math",
+    "classname": "math divides by zero",
+    "name": "math divides by zero",
+    "file": "src/math.test.js",
+    "status": "failed",
+    "durationMs": 21,
+    "message": "Error: expect(received).toThrow()",
+    "stack": "Error: expect(received).toThrow()\n\nReceived function did not throw\n    at Object.toThrow (/home/runner/work/widgets/widgets/src/math.test.js:12:30)\n    at Promise.then.completed (/home/runner/work/widgets/widgets/node_modules/jest-circus/build/utils.js:298:28)"
+  },
+  { "suite": "math", "classname": "math rounds later", "name": "math rounds later", "file": "src/math.test.js", "status": "skipped", "durationMs": 0 }
+]
