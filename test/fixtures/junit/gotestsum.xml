@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuites tests="3" failures="1" errors="0" time="0.517">
+	<testsuite tests="3" failures="1" time="0.012" name="github.com/acme/widgets/math" timestamp="2026-11-28T09:40:02+05:30">
+		<properties>
+			<property name="go.version" value="go1.23.4 linux/amd64"></property>
+		</properties>
+		<testcase classname="github.com/acme/widgets/math" name="TestAdd" time="0.000000"></testcase>
+		<testcase classname="github.com/acme/widgets/math" name="TestDivide/by_zero" time="0.010000">
+			<failure message="Failed" type="">=== RUN   TestDivide/by_zero&#xA;    math_test.go:14: expected an error, got nil&#xA;--- FAIL: TestDivide/by_zero (0.01s)&#xA;</failure>
+		</testcase>
+		<testcase classname="github.com/acme/widgets/math" name="TestSlow" time="0.000000">
+			<skipped message="=== RUN   TestSlow&#xA;    math_test.go:22: slow test, use -long&#xA;--- SKIP: TestSlow (0.00s)&#xA;"></skipped>
+		</testcase>
+	</testsuite>
+</testsuites>

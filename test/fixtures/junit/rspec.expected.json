@@ -1,0 +1,14 @@
+[
+  { "suite": "rspec", "classname": "spec.models.widget_spec", "name": "Widget is valid with a name", "file": "spec/models/widget_spec.rb", "status": "passed", "durationMs": 1 },
+  {
+    "suite": "rspec",
+    "classname": "spec.models.widget_spec",
+    "name": "Widget rejects a blank name",
+    "file": "spec/models/widget_spec.rb",
+    "status": "failed",
+    "durationMs": 11,
+    "message": "expected `#<Widget id: nil, name: \"\">.valid?` to be falsey, got true",
+    "stack": "Failure/Error: expect(widget).not_to be_valid\n  expected `#<Widget id: nil, name: \"\">.valid?` to be falsey, got true\n./spec/models/widget_spec.rb:12:in `block (2 levels) in <top (required)>'"
+  },
+  { "suite": "rspec", "classname": "spec.models.widget_spec", "name": "Widget exports to CSV", "file": "spec/models/widget_spec.rb", "status": "skipped", "durationMs": 0 }
+]
